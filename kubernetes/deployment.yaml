@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flower-classifier
+  labels:
+    app: flower-classifier
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flower-classifier
+  template:
+    metadata:
+      labels:
+        app: flower-classifier
+    spec:
+      containers:
+      - name: flower-classifier
+        image: flower-classifier:latest
+        imagePullPolicy: Never  # Use local image (for kind)
+        ports:
+        - containerPort: 9696
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9696
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9696
+          initialDelaySeconds: 30
+          periodSeconds: 10

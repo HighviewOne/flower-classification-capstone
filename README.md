@@ -236,6 +236,73 @@ curl -X POST http://localhost:9696/predict \
   -d '{"image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Sunflower_sky_backdrop.jpg/800px-Sunflower_sky_backdrop.jpg"}'
 ```
 
+## Kubernetes Deployment (Bonus)
+
+Deploy the service to a local Kubernetes cluster using kind.
+
+### Prerequisites
+
+```bash
+# Install kind (Kubernetes in Docker)
+winget install Kubernetes.kind
+
+# Install kubectl
+winget install Kubernetes.kubectl
+```
+
+### Quick Deploy (Windows)
+
+```bash
+kubernetes\deploy-k8s.bat
+```
+
+### Manual Deployment Steps
+
+```bash
+# 1. Create a kind cluster
+kind create cluster --name flower-cluster
+
+# 2. Load the Docker image into the cluster
+kind load docker-image flower-classifier:latest --name flower-cluster
+
+# 3. Apply Kubernetes manifests
+kubectl apply -f kubernetes/deployment.yaml
+kubectl apply -f kubernetes/service.yaml
+kubectl apply -f kubernetes/hpa.yaml
+
+# 4. Wait for deployment to be ready
+kubectl rollout status deployment/flower-classifier
+
+# 5. Check pod status
+kubectl get pods -l app=flower-classifier
+```
+
+### Access the Service
+
+```bash
+# Port forward to access the service
+kubectl port-forward service/flower-classifier 9696:80
+```
+
+Then test:
+```bash
+curl http://localhost:9696/health
+python tests/test_service.py
+```
+
+### Kubernetes Features
+
+- **Deployment:** Manages pod lifecycle with rolling updates
+- **Service:** LoadBalancer exposes the API on port 80
+- **HPA:** Horizontal Pod Autoscaler scales from 1-3 replicas based on CPU usage
+
+### Cleanup
+
+```bash
+# Delete the cluster when done
+kind delete cluster --name flower-cluster
+```
+
 ## API Endpoints
 
 | Endpoint | Method | Description |
