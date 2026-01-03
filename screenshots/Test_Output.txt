@@ -1,0 +1,77 @@
+
+(MLZoomCamp_env) C:\Users\Dell\anaconda_projects\MachineLearningZoomcamp2025\Capstone1\flower-classification-capstone\flower-classification-capstone>python tests/test_service.py
+
+==================================================
+FLOWER CLASSIFICATION - SERVICE TEST
+==================================================
+Testing service at: http://localhost:9696
+
+==================================================
+Testing: GET http://localhost:9696/health
+==================================================
+Status: 200
+Response: {'model_loaded': True, 'status': 'healthy'}
+
+==================================================
+Testing: POST http://localhost:9696/predict
+Image: daisy (100080576_f52e8ee070_n.jpg)
+==================================================
+Status: 200
+Predicted: daisy (99.8%)
+Expected: daisy → ✓ CORRECT
+
+==================================================
+Testing: POST http://localhost:9696/predict
+Image: dandelion (10043234166_e6dd915111_n.jpg)
+==================================================
+Status: 200
+Predicted: dandelion (100.0%)
+Expected: dandelion → ✓ CORRECT
+
+==================================================
+Testing: POST http://localhost:9696/predict
+Image: roses (10090824183_d02c613f10_m.jpg)
+==================================================
+Status: 200
+Predicted: roses (91.1%)
+Expected: roses → ✓ CORRECT
+
+==================================================
+Testing: POST http://localhost:9696/predict
+Image: sunflowers (1008566138_6927679c8a.jpg)
+==================================================
+Status: 200
+Predicted: sunflowers (95.2%)
+Expected: sunflowers → ✓ CORRECT
+
+==================================================
+Testing: POST http://localhost:9696/predict
+Image: tulips (100930342_92e8746431_n.jpg)
+==================================================
+Status: 200
+Predicted: tulips (91.1%)
+Expected: tulips → ✓ CORRECT
+
+--------------------------------------------------
+Testing base64 encoding...
+
+==================================================
+Testing: POST http://localhost:9696/predict (base64)
+Image: daisy
+==================================================
+Status: 200
+Predicted: daisy (99.8%)
+
+==================================================
+TEST SUMMARY
+==================================================
+  ✓ daisy
+  ✓ dandelion
+  ✓ roses
+  ✓ sunflowers
+  ✓ tulips
+--------------------------------------------------
+Passed: 5/5 (100%)
+
+✅ All tests passed!
+
