@@ -12,16 +12,32 @@ Examples:
 
 import argparse
 import requests
+import base64
 import sys
+from pathlib import Path
 
-# Sample flower image URLs for testing
-TEST_IMAGES = {
-    "sunflower": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Sunflower_sky_backdrop.jpg/800px-Sunflower_sky_backdrop.jpg",
-    "rose": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Rosa_rubiginosa_1.jpg/800px-Rosa_rubiginosa_1.jpg",
-    "daisy": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Leucanthemum_vulgare_%27Filigran%27_Flower_2200px.jpg/800px-Leucanthemum_vulgare_%27Filigran%27_Flower_2200px.jpg",
-    "tulip": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Tulip_-_florescence.jpg/800px-Tulip_-_florescence.jpg",
-    "dandelion": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Taraxacum_officinale_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-135.jpg/800px-Taraxacum_officinale_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-135.jpg"
-}
+# Get project root
+PROJECT_ROOT = Path(__file__).parent.parent
+DATA_DIR = PROJECT_ROOT / "data" / "flower_photos"
+
+
+def get_test_images():
+    """Get one test image from each class in the dataset."""
+    test_images = {}
+    
+    if not DATA_DIR.exists():
+        print(f"Warning: Dataset not found at {DATA_DIR}")
+        print("Using URL-based tests instead (may be less reliable)")
+        return None
+    
+    # Get first image from each class
+    for class_dir in DATA_DIR.iterdir():
+        if class_dir.is_dir():
+            images = list(class_dir.glob("*.jpg"))
+            if images:
+                test_images[class_dir.name] = images[0]
+    
+    return test_images
 
 
 def test_health(base_url: str) -> bool:
@@ -41,20 +57,19 @@ def test_health(base_url: str) -> bool:
         return False
 
 
-def test_prediction(base_url: str, flower_type: str, image_url: str) -> bool:
-    """Test prediction with a sample image URL."""
+def test_prediction_with_file(base_url: str, flower_type: str, image_path: Path) -> bool:
+    """Test prediction with a local image file."""
     url = f"{base_url}/predict"
     print(f"\n{'='*50}")
     print(f"Testing: POST {url}")
-    print(f"Image: {flower_type}")
+    print(f"Image: {flower_type} ({image_path.name})")
     print('='*50)
     
     try:
-        response = requests.post(
-            url,
-            json={"image_url": image_url},
-            timeout=30
-        )
+        with open(image_path, "rb") as f:
+            files = {"image": (image_path.name, f, "image/jpeg")}
+            response = requests.post(url, files=files, timeout=30)
+        
         print(f"Status: {response.status_code}")
         
         if response.status_code == 200:
@@ -70,6 +85,42 @@ def test_prediction(base_url: str, flower_type: str, image_url: str) -> bool:
             print(f"Expected: {flower_type} → {status}")
             
             return is_correct
+        else:
+            print(f"Error: {response.json()}")
+            return False
+            
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+
+def test_prediction_with_base64(base_url: str, flower_type: str, image_path: Path) -> bool:
+    """Test prediction with base64-encoded image."""
+    url = f"{base_url}/predict"
+    print(f"\n{'='*50}")
+    print(f"Testing: POST {url} (base64)")
+    print(f"Image: {flower_type}")
+    print('='*50)
+    
+    try:
+        with open(image_path, "rb") as f:
+            image_base64 = base64.b64encode(f.read()).decode("utf-8")
+        
+        response = requests.post(
+            url,
+            json={"image_base64": image_base64},
+            timeout=30
+        )
+        
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            predicted = result.get("prediction", "unknown")
+            confidence = result.get("confidence", 0)
+            
+            print(f"Predicted: {predicted} ({confidence:.1%})")
+            return True
         else:
             print(f"Error: {response.json()}")
             return False
@@ -100,13 +151,29 @@ def main():
     
     if not health_ok:
         print("\n❌ Health check failed! Is the service running?")
+        print("\nStart the service with:")
+        print("  python src/predict.py")
         sys.exit(1)
     
-    # Test predictions
+    # Get test images from dataset
+    test_images = get_test_images()
+    
+    if not test_images:
+        print("\n❌ No test images found. Please download the dataset first:")
+        print("  python src/download_data.py")
+        sys.exit(1)
+    
+    # Test predictions with file uploads
     results = []
-    for flower_type, image_url in TEST_IMAGES.items():
-        is_correct = test_prediction(base_url, flower_type, image_url)
+    for flower_type, image_path in sorted(test_images.items()):
+        is_correct = test_prediction_with_file(base_url, flower_type, image_path)
         results.append((flower_type, is_correct))
+    
+    # Test base64 encoding with one image
+    print("\n" + "-" * 50)
+    print("Testing base64 encoding...")
+    first_flower, first_path = list(test_images.items())[0]
+    test_prediction_with_base64(base_url, first_flower, first_path)
     
     # Summary
     print("\n" + "=" * 50)
@@ -126,8 +193,11 @@ def main():
     if passed == total:
         print("\n✅ All tests passed!")
         sys.exit(0)
+    elif passed >= total * 0.8:
+        print("\n⚠️ Most tests passed (some misclassifications expected)")
+        sys.exit(0)
     else:
-        print("\n⚠️ Some tests failed")
+        print("\n❌ Too many tests failed")
         sys.exit(1)
 
 

@@ -131,7 +131,10 @@ def predict():
             # Option 1: Image URL
             if "image_url" in data:
                 url = data["image_url"]
-                response = requests.get(url, timeout=10)
+                headers = {
+                    "User-Agent": "FlowerClassifier/1.0 (ML Zoomcamp Project; https://github.com/HighviewOne/flower-classification-capstone)"
+                }
+                response = requests.get(url, headers=headers, timeout=10)
                 response.raise_for_status()
                 image = Image.open(io.BytesIO(response.content))
             
